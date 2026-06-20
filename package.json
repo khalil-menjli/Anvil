@@ -1,0 +1,39 @@
+{
+  "name": "anvil",
+  "version": "1.0.0",
+  "description": "An autonomous CLI coding agent that reads, edits, and runs code using the Anthropic API.",
+  "type": "module",
+  "main": "dist/cli.js",
+  "bin": {
+    "anvil": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "keywords": ["ai", "agent", "cli", "coding-assistant"],
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
+    "@inquirer/prompts": "^8.5.2",
+    "chalk": "^5.6.2",
+    "commander": "^15.0.0",
+    "diff": "^9.0.0",
+    "fast-glob": "^3.3.3"
+  }
+}
