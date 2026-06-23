@@ -20,7 +20,12 @@
     "prepublishOnly": "npm run build",
     "test": "echo \"no tests yet\" && exit 0"
   },
-  "keywords": ["ai", "agent", "cli", "coding-assistant"],
+  "keywords": [
+    "ai",
+    "agent",
+    "cli",
+    "coding-assistant"
+  ],
   "author": "",
   "license": "",
   "devDependencies": {
@@ -34,6 +39,8 @@
     "chalk": "^5.6.2",
     "commander": "^15.0.0",
     "diff": "^9.0.0",
-    "fast-glob": "^3.3.3"
+    "dotenv": "^17.4.2",
+    "fast-glob": "^3.3.3",
+    "openai": "^6.44.0"
   }
 }
