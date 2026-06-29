@@ -1,6 +1,9 @@
 import OpenAI from "openai";
 import { tools } from "./tools/definitions.js";
 import { readF, listDir } from "./tools/index.js";
+import { strReplace } from "./tools/index.js";
+import { printDiff, askApproval } from "./ui/index.js";
+import { writeFile } from "node:fs/promises";
 //NARAYA_API
 const client = new OpenAI({
   baseURL: "https://router.bynara.id/v1",
@@ -50,6 +53,26 @@ export async function runAgent(userMessage: string): Promise<void> {
               result = await readF(args.path);
             } else if (toolCall.function.name === "list_dir") {
               result = (await listDir(args.path)).join("\n");
+            }
+            if (toolCall.function.name === "str_replace") {
+              const { path, old_str, new_str } = args;
+              const outcome = await strReplace(path, old_str, new_str);
+
+              if ("error" in outcome) {
+                result = outcome.error;
+              } else {
+                printDiff(
+                  await readF(path), // old content
+                  outcome.newContent, // new content
+                );
+                const approved = await askApproval("Apply this change?");
+                if (approved) {
+                  await writeFile(path, outcome.newContent, "utf-8");
+                  result = `Successfully edited ${path}`;
+                } else {
+                  result = `User rejected the change to ${path}`;
+                }
+              }
             } else {
               result = "Unknown tool ";
             }
