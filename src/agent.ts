@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import { tools } from "./tools/definitions.js";
-import { readF, listDir } from "./tools/index.js";
-import { strReplace } from "./tools/index.js";
+import { readF, listDir, strReplace } from "./tools/index.js";
 import { printDiff, askApproval } from "./ui/index.js";
 import { writeFile } from "node:fs/promises";
 //NARAYA_API
@@ -47,14 +46,12 @@ export async function runAgent(userMessage: string): Promise<void> {
             if (toolCall.type !== "function") continue; // skip non-function tool calls
             const args = JSON.parse(toolCall.function.arguments);
             // console.log(args.path);
-            let result: string;
-
+            let result = "Unknown tool";
             if (toolCall.function.name === "read_file") {
               result = await readF(args.path);
             } else if (toolCall.function.name === "list_dir") {
               result = (await listDir(args.path)).join("\n");
-            }
-            if (toolCall.function.name === "str_replace") {
+            } else if (toolCall.function.name === "str_replace") {
               const { path, old_str, new_str } = args;
               const outcome = await strReplace(path, old_str, new_str);
 
@@ -73,8 +70,6 @@ export async function runAgent(userMessage: string): Promise<void> {
                   result = `User rejected the change to ${path}`;
                 }
               }
-            } else {
-              result = "Unknown tool ";
             }
             messages.push({
               role: "tool",
