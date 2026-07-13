@@ -1,6 +1,12 @@
-export const tools = [
+import type OpenAI from "openai";
+
+/**
+ * Tool definitions exposed to the model.
+ * Each entry describes a function the agent can call.
+ */
+export const tools: OpenAI.ChatCompletionTool[] = [
   {
-    type: "function" as const,
+    type: "function",
     function: {
       name: "read_file",
       description: "Read the contents of a file at the given path",
@@ -17,7 +23,7 @@ export const tools = [
     },
   },
   {
-    type: "function" as const,
+    type: "function",
     function: {
       name: "list_dir",
       description: "List the files and folders at the given path",
@@ -34,28 +40,49 @@ export const tools = [
     },
   },
   {
-  type: "function" as const,
-  function: {
-    name: "str_replace",
-    description: "Replace an exact string in a file with new text",
-    parameters: {
-      type: "object",
-      properties: {
-        path: {
-          type: "string",
-          description: "The file to edit",
+    type: "function",
+    function: {
+      name: "str_replace",
+      description: "Replace an exact string in a file with new text",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "The file to edit",
+          },
+          old_str: {
+            type: "string",
+            description: "The exact text to replace — must appear exactly once in the file",
+          },
+          new_str: {
+            type: "string",
+            description: "The new text to replace it with",
+          },
         },
-        old_str: {
-          type: "string",
-          description: "The exact text to replace — must appear exactly once in the file",
-        },
-        new_str: {
-          type: "string",
-          description: "The new text to replace it with",
-        },
+        required: ["path", "old_str", "new_str"],
       },
-      required: ["path", "old_str", "new_str"],
     },
   },
-},
+  {
+    type: "function",
+    function: {
+      name: "create_file",
+      description: "Create a new file with the given content. Fails if the file already exists.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "The path where the file should be created",
+          },
+          content: {
+            type: "string",
+            description: "The content to write to the file",
+          },
+        },
+        required: ["path", "content"],
+      },
+    },
+  },
 ];

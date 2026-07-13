@@ -1,87 +1,77 @@
 import OpenAI from "openai";
-import { tools } from "./tools/definitions.js";
-import { readF, listDir, strReplace } from "./tools/index.js";
-import { printDiff, askApproval } from "./ui/index.js";
-import { writeFile } from "node:fs/promises";
-//NARAYA_API
+import { tools, toolRegistry } from "./tools/index.js";
+
+const SYSTEM_PROMPT = `You are Anvil, an autonomous CLI coding agent. You can read files, list directories, edit files, and create new files. Be precise with edits — always match whitespace and indentation exactly.`;
+
 const client = new OpenAI({
   baseURL: "https://router.bynara.id/v1",
-  apiKey: process.env.NARAYA_API_KEY,
+  apiKey: process.env["NARAYA_API_KEY"],
 });
 
+/**
+ * Execute a single function-type tool call by looking up its handler in the registry.
+ */
+async function executeFunctionToolCall(
+  toolCall: OpenAI.ChatCompletionMessageToolCall & { type: "function" },
+): Promise<string> {
+  const { name, arguments: rawArgs } = toolCall.function;
+  const handler = toolRegistry[name];
+
+  if (!handler) {
+    return `Unknown tool: ${name}`;
+  }
+
+  const args = JSON.parse(rawArgs) as Record<string, unknown>;
+  return handler(args);
+}
+
+/**
+ * Run the agentic loop: send messages to the model, execute tool calls,
+ * and repeat until the model produces a final text response.
+ */
 export async function runAgent(userMessage: string): Promise<void> {
   const messages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: userMessage },
   ];
+
   while (true) {
-    try {
-      const response = await client.chat.completions.create({
-        model: "mimo-v2.5-pro-free",
-        messages,
-        tools,
-      });
+    const response = await client.chat.completions.create({
+      model: "mistral-large",
+      messages,
+      tools,
+    });
 
-      const choice = response.choices[0];
-      if (!choice) {
-        console.error("empty response from model");
-        process.exit(1);
-      }
+    const choice = response.choices[0];
+    if (!choice) {
+      throw new Error("Empty response from model");
+    }
 
-      const stopReason = choice.finish_reason;
-      if (stopReason === "stop") {
-        const content = choice.message.content;
-        if (!content) {
-          console.error("no text content in response");
-          process.exit(1);
-        }
-
+    // Final text response — print and exit
+    if (choice.finish_reason === "stop") {
+      const content = choice.message.content;
+      if (content) {
         console.log(content);
-        break;
       }
-      messages.push(choice.message);
-      if (stopReason === "tool_calls") {
-        const toolCalls = choice.message.tool_calls;
-        if (toolCalls) {
-          for (const toolCall of toolCalls) {
-            if (toolCall.type !== "function") continue; // skip non-function tool calls
-            const args = JSON.parse(toolCall.function.arguments);
-            // console.log(args.path);
-            let result = "Unknown tool";
-            if (toolCall.function.name === "read_file") {
-              result = await readF(args.path);
-            } else if (toolCall.function.name === "list_dir") {
-              result = (await listDir(args.path)).join("\n");
-            } else if (toolCall.function.name === "str_replace") {
-              const { path, old_str, new_str } = args;
-              const outcome = await strReplace(path, old_str, new_str);
+      break;
+    }
 
-              if ("error" in outcome) {
-                result = outcome.error;
-              } else {
-                printDiff(
-                  await readF(path), // old content
-                  outcome.newContent, // new content
-                );
-                const approved = await askApproval("Apply this change?");
-                if (approved) {
-                  await writeFile(path, outcome.newContent, "utf-8");
-                  result = `Successfully edited ${path}`;
-                } else {
-                  result = `User rejected the change to ${path}`;
-                }
-              }
-            }
-            messages.push({
-              role: "tool",
-              tool_call_id: toolCall.id,
-              content: result,
-            });
-          }
-        }
+    // Append the assistant's message (may contain tool_calls)
+    messages.push(choice.message);
+
+    // Process tool calls
+    if (choice.finish_reason === "tool_calls" && choice.message.tool_calls) {
+      for (const toolCall of choice.message.tool_calls) {
+        if (toolCall.type !== "function") continue;
+
+        const result = await executeFunctionToolCall(toolCall);
+
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: result,
+        });
       }
-    } catch (error) {
-      console.error("API call failed:", error);
-      process.exit(1);
     }
   }
 }
