@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { tools, toolRegistry } from "./tools/index.js";
+import { Spinner } from "./ui/spinner.js";
 
 const SYSTEM_PROMPT = `You are Anvil, an autonomous CLI coding agent. You can read files, list directories, edit files, and create new files. Be precise with edits — always match whitespace and indentation exactly.`;
 
@@ -7,7 +8,7 @@ const client = new OpenAI({
   baseURL: "https://router.bynara.id/v1",
   apiKey: process.env["NARAYA_API_KEY"],
 });
-
+const spinner = new Spinner();
 /**
  * Execute a single function-type tool call by looking up its handler in the registry.
  */
@@ -20,7 +21,6 @@ async function executeFunctionToolCall(
   if (!handler) {
     return `Unknown tool: ${name}`;
   }
-
   const args = JSON.parse(rawArgs) as Record<string, unknown>;
   return handler(args);
 }
@@ -36,12 +36,13 @@ export async function runAgent(userMessage: string): Promise<void> {
   ];
 
   while (true) {
+    spinner.start("Thinking...");
     const response = await client.chat.completions.create({
       model: "mistral-large",
       messages,
       tools,
     });
-
+    spinner.stop("Thinking");
     const choice = response.choices[0];
     if (!choice) {
       throw new Error("Empty response from model");
