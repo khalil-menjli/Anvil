@@ -5,6 +5,7 @@ import { listDir } from "./listDir.js";
 import { strReplace } from "./strReplace.js";
 import { createFile } from "./createFile.js";
 import { printDiff, askApproval, Spinner } from "../ui/index.js";
+import { runBash } from "./runBash.js";
 const spinner = new Spinner();
 /**
  * Registry mapping tool names to their handler functions.
@@ -72,6 +73,19 @@ export const toolRegistry: Record<string, ToolHandler> = {
     if (!approved) return `User rejected creating ${path}`;
 
     const result = await createFile(path, content);
+    return result.ok ? result.data : result.error;
+  },
+  run_bash: async (args) => {
+    const approved = await askApproval(
+      `Run command: ${args.command as string} up to ${args.timeout as string}s`,
+    );
+    if (!approved) return `User rejected run this command ${args.command}`;
+    spinner.start(`${args.command} ( up to ${args.timeout}s )`);
+    const result = await runBash(
+      args.command as string,
+      args.timeout as number,
+    );
+    spinner.stop();
     return result.ok ? result.data : result.error;
   },
 };

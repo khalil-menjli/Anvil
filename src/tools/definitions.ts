@@ -53,7 +53,8 @@ export const tools: OpenAI.ChatCompletionTool[] = [
           },
           old_str: {
             type: "string",
-            description: "The exact text to replace — must appear exactly once in the file",
+            description:
+              "The exact text to replace — must appear exactly once in the file",
           },
           new_str: {
             type: "string",
@@ -68,7 +69,8 @@ export const tools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "create_file",
-      description: "Create a new file with the given content. Fails if the file already exists.",
+      description:
+        "Create a new file with the given content. Fails if the file already exists.",
       parameters: {
         type: "object",
         properties: {
@@ -82,6 +84,28 @@ export const tools: OpenAI.ChatCompletionTool[] = [
           },
         },
         required: ["path", "content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "run_bash",
+      description:
+        "Run a shell command in the project directory. Use for running tests, installing packages, git operations, and other terminal tasks.",
+      parameters: {
+        type: "object",
+        properties: {
+          command: {
+            type: "string",
+            description: "The shell command to execute",
+          },
+          timeout: {
+            type: "number",
+            description: "Max seconds to wait. Defaults to 30, max 600.",
+          },
+        },
+        required: ["command"],
       },
     },
   },
