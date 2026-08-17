@@ -109,4 +109,27 @@ export const tools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "grep",
+      description:
+        "Search for a text pattern across files in the project and return matching lines with their file paths and line numbers.",
+      parameters: {
+        type: "object",
+        properties: {
+          patterns: {
+            type: "string",
+            description: "The text pattern to search for.",
+          },
+          source: {
+            type: "string",
+            description:
+              "The file or directory pattern to search in. Defaults to 'src/**/**'.",
+          },
+        },
+        required: ["patterns"],
+      },
+    },
+  },
 ];

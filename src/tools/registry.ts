@@ -6,6 +6,7 @@ import { strReplace } from "./strReplace.js";
 import { createFile } from "./createFile.js";
 import { printDiff, askApproval, Spinner } from "../ui/index.js";
 import { runBash } from "./runBash.js";
+import { grep } from "./grep.js";
 const spinner = new Spinner();
 /**
  * Registry mapping tool names to their handler functions.
@@ -86,6 +87,12 @@ export const toolRegistry: Record<string, ToolHandler> = {
       args.timeout as number,
     );
     spinner.stop();
+    return result.ok ? result.data : result.error;
+  },
+  grep: async (args) => {
+    spinner.start(`Serching for ${args.patterns as string}...`);
+    const result = await grep(args.patterns as string, args.source as string);
+    spinner.stop("Search complete");
     return result.ok ? result.data : result.error;
   },
 };
