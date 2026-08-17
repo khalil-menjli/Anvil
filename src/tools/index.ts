@@ -5,3 +5,4 @@ export { createFile } from "./createFile.js";
 export { toolRegistry } from "./registry.js";
 export { tools } from "./definitions.js";
 export { runBash } from "./runBash.js";
+export { grep } from "./grep.js";
