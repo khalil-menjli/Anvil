@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 import "dotenv/config";
 import { runAgent } from "./agent.js";
 
@@ -9,7 +10,9 @@ if (!message) {
 }
 
 if (!process.env["NARAYA_API_KEY"]) {
-  console.error("Missing NARAYA_API_KEY environment variable. Set it in your .env file.");
+  console.error(
+    "Missing NARAYA_API_KEY environment variable. Set it in your .env file.",
+  );
   process.exit(1);
 }
 
