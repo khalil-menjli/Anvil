@@ -21,7 +21,7 @@ export async function loadConfig(): Promise<string> {
       },
     });
     if (apiKey) {
-      (await mkdir(join(homedir(), ".anvil")), { recursive: true });
+      await mkdir(join(homedir(), ".anvil"), { recursive: true });
       await writeFile(
         CONFIG_PATH,
         JSON.stringify({ apiKey: apiKey.trim() }, null, 2),
