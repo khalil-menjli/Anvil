@@ -4,10 +4,6 @@ import { Spinner } from "./ui/spinner.js";
 
 const SYSTEM_PROMPT = `You are Anvil, an autonomous CLI coding agent. You can read files, list directories, edit files, and create new files. Be precise with edits — always match whitespace and indentation exactly.`;
 
-const client = new OpenAI({
-  baseURL: "https://router.bynara.id/v1",
-  apiKey: process.env["NARAYA_API_KEY"],
-});
 const spinner = new Spinner();
 /**
  * Execute a single function-type tool call by looking up its handler in the registry.
@@ -29,7 +25,14 @@ async function executeFunctionToolCall(
  * Run the agentic loop: send messages to the model, execute tool calls,
  * and repeat until the model produces a final text response.
  */
-export async function runAgent(userMessage: string): Promise<void> {
+export async function runAgent(
+  userMessage: string,
+  apiKey: string,
+): Promise<void> {
+  const client = new OpenAI({
+    baseURL: "https://router.bynara.id/v1",
+    apiKey,
+  });
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: userMessage },
