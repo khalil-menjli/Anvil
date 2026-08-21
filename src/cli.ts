@@ -8,16 +8,10 @@ if (!message) {
   console.error("Usage: anvil <message>");
   process.exit(1);
 }
-const apiKey = await loadConfig();
-if (!apiKey) {
-  console.error(
-    "Missing NARAYA_API_KEY environment variable. Set it in your .env file.",
-  );
-  process.exit(1);
-}
+const provider = await loadConfig();
 
 try {
-  await runAgent(message, apiKey);
+  await runAgent(message, provider);
 } catch (error) {
   console.error("Fatal:", error instanceof Error ? error.message : error);
   process.exit(1);

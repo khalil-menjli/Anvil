@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { tools, toolRegistry } from "./tools/index.js";
 import { Spinner } from "./ui/spinner.js";
+import type { Provider } from "./types.js";
 
 const SYSTEM_PROMPT = `You are Anvil, an autonomous CLI coding agent. You can read files, list directories, edit files, and create new files. Be precise with edits — always match whitespace and indentation exactly.`;
 
@@ -27,11 +28,11 @@ async function executeFunctionToolCall(
  */
 export async function runAgent(
   userMessage: string,
-  apiKey: string,
+  provider: Provider,
 ): Promise<void> {
   const client = new OpenAI({
-    baseURL: "https://router.bynara.id/v1",
-    apiKey,
+    baseURL: provider.baseURL,
+    apiKey: provider.apiKey,
   });
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -41,7 +42,7 @@ export async function runAgent(
   while (true) {
     spinner.start("Thinking...");
     const response = await client.chat.completions.create({
-      model: "mistral-large",
+      model: provider.model,
       messages,
       tools,
     });
