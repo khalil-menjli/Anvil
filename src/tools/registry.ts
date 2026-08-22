@@ -7,6 +7,7 @@ import { createFile } from "./createFile.js";
 import { printDiff, askApproval, Spinner } from "../ui/index.js";
 import { runBash } from "./runBash.js";
 import { grep } from "./grep.js";
+import { isSafePath } from "../utils/pathSafety.js";
 const spinner = new Spinner();
 /**
  * Registry mapping tool names to their handler functions.
@@ -15,9 +16,15 @@ const spinner = new Spinner();
  */
 export const toolRegistry: Record<string, ToolHandler> = {
   read_file: async (args) => {
+    const path = args.path as string;
+    if (!isSafePath(path)) {
+      const pathApproved = await askApproval(
+        `This ${path} is outside the project \nDo you want to continue`,
+      );
+      if (!pathApproved) return `Access denied: ${path} is outside the project`;
+    }
     spinner.start(`Reading ${args.path as string}...`);
 
-    const path = args.path as string;
     const result = await readFileContents(path);
 
     spinner.stop(`Read ${path}`);
@@ -25,9 +32,15 @@ export const toolRegistry: Record<string, ToolHandler> = {
   },
 
   list_dir: async (args) => {
+    const path = args.path as string;
+    if (!isSafePath(path)) {
+      const pathApproved = await askApproval(
+        `This ${path} is outside the project \nDo you want to continue`,
+      );
+      if (!pathApproved) return `Access denied: ${path} is outside the project`;
+    }
     spinner.start(`Listing ${args.path as string}...`);
 
-    const path = args.path as string;
     const result = await listDir(path);
 
     spinner.stop(`Listed ${args.path as string}`);
@@ -35,11 +48,16 @@ export const toolRegistry: Record<string, ToolHandler> = {
   },
 
   str_replace: async (args) => {
-    spinner.start(`Editing File  ${args.path as string}...`);
-
     const path = args.path as string;
     const oldStr = args.old_str as string;
     const newStr = args.new_str as string;
+    if (!isSafePath(path)) {
+      const pathApproved = await askApproval(
+        `This ${path} is outside the project \nDo you want to continue`,
+      );
+      if (!pathApproved) return `Access denied: ${path} is outside the project`;
+    }
+    spinner.start(`Editing File  ${args.path as string}...`);
 
     const result = await strReplace(path, oldStr, newStr);
     if (!result.ok) {
@@ -61,10 +79,17 @@ export const toolRegistry: Record<string, ToolHandler> = {
   },
 
   create_file: async (args) => {
-    spinner.start(`creating a file ${args.path as string}...`);
-
     const path = args.path as string;
     const content = args.content as string;
+
+    if (!isSafePath(path)) {
+      const pathApproved = await askApproval(
+        `This ${path} is outside the project \nDo you want to continue`,
+      );
+      if (!pathApproved) return `Access denied: ${path} is outside the project`;
+    }
+    spinner.start(`creating a file ${args.path as string}...`);
+
     spinner.stop(`Previewing ${path}`);
 
     // Show content preview and ask for approval
