@@ -56,7 +56,7 @@ anvil --provider naraya "say hello"
 
 ## Providers
 
-Anvil works with any OpenAI-compatible API. The default provider is naraya.
+Anvil works with any OpenAI-compatible API.
 
 To add a new provider, edit `~/.anvil/config.json`:
 
