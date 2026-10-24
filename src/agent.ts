@@ -25,7 +25,13 @@ async function executeFunctionToolCall(
   if (!handler) {
     return `Unknown tool: ${name}`;
   }
-  const args = JSON.parse(rawArgs) as Record<string, unknown>;
+  let args: Record<string, unknown>;
+  try {
+    args = JSON.parse(rawArgs) as Record<string, unknown>;
+  } catch {
+    return `Error: arguments were not valid JSON. Resend valid JSON matching the tool schema.`;
+  }
+
   return handler(args);
 }
 
