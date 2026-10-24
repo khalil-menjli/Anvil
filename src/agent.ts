@@ -5,6 +5,13 @@ import type { Provider } from "./types.js";
 
 const SYSTEM_PROMPT = `You are Anvil, an autonomous CLI coding agent. You can read files, list directories, edit files, and create new files. Be precise with edits — always match whitespace and indentation exactly.`;
 
+/**
+ * Maximum number of model round-trips (turns) allowed in one run.
+ * A healthy run finishes well below this. Reaching the cap usually means
+ * the model is stuck in a loop — not that it just needs "a few more turns".
+ */
+const MAX_TURNS = 25;
+
 const spinner = new Spinner();
 /**
  * Execute a single function-type tool call by looking up its handler in the registry.
@@ -39,7 +46,31 @@ export async function runAgent(
     { role: "user", content: userMessage },
   ];
 
+  let turn = 0;
   while (true) {
+    // Budget check happens BEFORE the API call: when the turn cap is reached,
+    // give the model one final call WITHOUT tools so it can summarize the
+    // work instead of being cut off mid-task with no explanation.
+    if (turn >= MAX_TURNS) {
+      messages.push({
+        role: "user",
+        content:
+          "You have used all your available tool calls. Do not try to continue the task. Summarize the progress so far: what was completed, what remains, and what the user can do next.",
+      });
+      spinner.start("Wrapping up...");
+      const response = await client.chat.completions.create({
+        model: provider.model,
+        messages,
+      });
+      spinner.stop("Wrapping up");
+      const finalContent = response.choices[0]?.message?.content;
+      if (finalContent) {
+        console.log(finalContent);
+      }
+      return;
+    }
+    turn++;
+
     spinner.start("Thinking...");
     const response = await client.chat.completions.create({
       model: provider.model,
