@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI, { APIConnectionError, APIError } from "openai";
 import { tools, toolRegistry } from "./tools/index.js";
 import { Spinner } from "./ui/spinner.js";
 import type { Provider } from "./types.js";
@@ -11,6 +11,68 @@ const SYSTEM_PROMPT = `You are Anvil, an autonomous CLI coding agent. You can re
  * the model is stuck in a loop — not that it just needs "a few more turns".
  */
 const MAX_TURNS = 25;
+
+const MAX_ATTEMPTS = 4;
+const BASE_DELAY_MS = 1000;
+const MAX_DELAY_MS = 30_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function isRetryable(error: unknown): boolean {
+  if (error instanceof APIConnectionError) return true;
+  if (error instanceof APIError) {
+    return error.status === 429 || (error.status !== undefined && error.status >= 500);
+  }
+  return false;
+}
+
+function retryCeilingMs(error: unknown, attempt: number): number {
+  const exponential = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** attempt);
+  if (error instanceof APIError) {
+    const retryAfter = Number(error.headers?.get("retry-after"));
+    if (Number.isFinite(retryAfter) && retryAfter > 0) {
+      return Math.max(exponential, retryAfter * 1000);
+    }
+  }
+  return exponential;
+}
+
+/**
+ * One model call with retry: exponential backoff with full jitter,
+ * capped attempts, and Retry-After respected. Permanent errors
+ * (bad key, unknown model, bad request) are never retried.
+ */
+async function callModel(
+  client: OpenAI,
+  model: string,
+  messages: OpenAI.ChatCompletionMessageParam[],
+  tools?: OpenAI.ChatCompletionTool[],
+): Promise<OpenAI.ChatCompletion> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      return await client.chat.completions.create({
+        model,
+        messages,
+        ...(tools ? { tools } : {}),
+      });
+    } catch (error) {
+      lastError = error;
+      if (!isRetryable(error) || attempt === MAX_ATTEMPTS - 1) break;
+      const delay = Math.floor(Math.random() * retryCeilingMs(error, attempt));
+      spinner.start(`Retrying in ${(delay / 1000).toFixed(1)}s...`);
+      await sleep(delay);
+    }
+  }
+  if (isRetryable(lastError)) {
+    throw new Error(
+      `Model unavailable after ${MAX_ATTEMPTS} attempts: ${
+        lastError instanceof Error ? lastError.message : String(lastError)
+      }`,
+    );
+  }
+  throw lastError;
+}
 
 const spinner = new Spinner();
 /**
@@ -64,10 +126,7 @@ export async function runAgent(
           "You have used all your available tool calls. Do not try to continue the task. Summarize the progress so far: what was completed, what remains, and what the user can do next.",
       });
       spinner.start("Wrapping up...");
-      const response = await client.chat.completions.create({
-        model: provider.model,
-        messages,
-      });
+      const response = await callModel(client, provider.model, messages);
       spinner.stop("Wrapping up");
       const finalContent = response.choices[0]?.message?.content;
       if (finalContent) {
@@ -78,11 +137,7 @@ export async function runAgent(
     turn++;
 
     spinner.start("Thinking...");
-    const response = await client.chat.completions.create({
-      model: provider.model,
-      messages,
-      tools,
-    });
+    const response = await callModel(client, provider.model, messages, tools);
     spinner.stop("Thinking");
     const choice = response.choices[0];
     if (!choice) {
